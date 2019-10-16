@@ -1,0 +1,5 @@
+*.swp
+*.swo
+@eaDir
+*.DS_Store
+*.m~
