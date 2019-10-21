@@ -1,13 +1,17 @@
 function [out, columns] = parse_choice_data(SessionData)
     n_trials = SessionData.nTrials;
-    columns = {'trial','choice','presses','aborted', 'rewarded', 'PR_requirement'};
+    columns = {'trial','choice','presses','aborted', 'rewarded', 'PR_requirement', 'FR_requirement', 'PR_reward_size','FR_reward_size'};
     out = zeros([n_trials, length(columns)]);
-    PR_presses = 1;
     for i = 1:n_trials
         out(i, 1) = i;
         trial = SessionData.RawEvents.Trial{i};
+        settings = SessionData.TrialSettings(i).GUI;
         states = get_valid_states(trial.States);
-        
+        out(i,6) = settings.NumPressRequired_L;
+        out(i,7) = settings.NumPressRequired_S;
+        out(i,8) = settings.Reward_L;
+        out(i,9) = settings.Reward_S;
+
         % Get side chosen
         if any(strcmp(states, 'Side_L'))
             out(i,2) = 1;
@@ -35,9 +39,5 @@ function [out, columns] = parse_choice_data(SessionData)
             end
         end
         out(i, 3) = n;
-        if out(i, 2) == 1 && out(i,5) == 1
-            PR_presses = n;
-        end
-        out(i, 6) = PR_presses;
     end
 end

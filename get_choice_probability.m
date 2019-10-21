@@ -1,13 +1,17 @@
-function [out, columns, B, dev, stats] = get_choice_probability(SessionData)
+function [out, columns, switch_point, B, dev, stats] = get_choice_probability(SessionData)
     [data, columns] = parse_choice_data(SessionData);
+    pr_col = find(strcmp(columns, 'PR_requirement'));
+    choice_col = find(strcmp(columns, 'choice'));
+    trial_col = find(strcmp(columns, 'trial'));
     to_plot = true;
     % remove all aborted trials
     idx = data(:,5) == 1;
     data = data(idx,:);
 
-    X = data(:,6); % using number of PR presses required as the predictor variable
+    X = data(:,pr_col); % using number of PR presses required as the predictor variable
     % X = data(:, [1,6]); % could use both trial and number of PR presses
-    Y = data(:,2); % choice is the dependent varaible (1 for PR, 0 for FR)
+    Y = data(:,choice_col); % choice is the dependent varaible (1 for PR, 0 for FR)
+    trials = data(:, trial_col);
 
     % Fit binomial glm (logistic regression)
     [B, dev, stats] = glmfit(X, Y, 'binomial');
@@ -15,21 +19,22 @@ function [out, columns, B, dev, stats] = get_choice_probability(SessionData)
     [yfit, dylo, dyhi] = glmval(B, X, 'logit', stats);
     out = [data yfit yfit-dylo yfit+dyhi];
 
+    switch_point = -B(1)/B(2);
     if to_plot
-        figure();
+        figure('Position', [59, 2, 1800, 900]);
         subplot(2,1,1)
-        xvec = [data(:,1)', fliplr(data(:,1)')];
+        xvec = [trials', fliplr(trials')];
         yvec = [out(:,end-1)', fliplr(out(:,end)')];
-        plot(data(:,1), data(:,2), 'm.', 'markersize', 15);
+        plot(trials, Y, 'm.', 'markersize', 15);
         hold on
         fill(xvec, yvec, 'r', 'facealpha', 0.4, 'edgecolor', 'none');
         fill(xvec, 1-yvec, 'b', 'facealpha', 0.4, 'edgecolor', 'none');
-        l_pr = plot(data(:,1), yfit, 'r-', 'linewidth', 3);
-        l_fr = plot(data(:,1), 1-yfit, 'b-', 'linewidth',3);
+        l_pr = plot(trials, yfit, 'r-', 'linewidth', 3);
+        l_fr = plot(trials, 1-yfit, 'b-', 'linewidth',3);
         legend([l_pr, l_fr], {'PR', 'FR'}, 'location', 'east')
         xlabel('Trial')
         ylabel('Probability of choice')
-        xlim([min(data(:,1)), max(data(:,1))])
+        xlim([min(trials), max(trials)])
         ylim([-0.2, 1.2])
         yticks(0:.2:1)
         yyaxis right
@@ -38,12 +43,17 @@ function [out, columns, B, dev, stats] = get_choice_probability(SessionData)
         yticklabels({'FR', 'PR'})
 
         subplot(2,1,2)
-        plot(data(:,6), yfit, 'r-', 'linewidth', 2)
+        xvec = [X', fliplr(X')];
+        fill(xvec, yvec, 'r', 'facealpha', 0.4, 'edgecolor', 'none');
         hold on
-        plot(data(:,6), 1-yfit, 'b-', 'linewidth',2)
+        fill(xvec, 1-yvec, 'b', 'facealpha', 0.4, 'edgecolor', 'none');
+        plot(X, yfit, 'r-', 'linewidth', 3)
+        plot(X, 1-yfit, 'b-', 'linewidth',3)
+        l1 = xline(switch_point, '-', 'Switch Point', 'linewidth',1);
+        legend(l1, {sprintf('%0.3g', switch_point)}, 'location','east');
         xlabel('PR Presses Required')
         ylabel('Probability of choice')
-        xlim([min(data(:,6)), max(data(:,6))])
+        xlim([min(X), max(X)])
         suptitle('Choice Probability')
     end
 
